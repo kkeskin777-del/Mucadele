@@ -84,8 +84,8 @@ Lütfen yanıtı Türkçe dilinde, samimi, destekleyici, yol gösterici ve profe
       let result;
       const localKey = localStorage.getItem('user_gemini_api_key');
       if (localKey) {
-        // Direct browser-side Gemini API call using gemini-2.5-flash
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${localKey}`, {
+        // Direct browser-side Gemini API call using gemini-3.5-flash
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${localKey}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -280,9 +280,30 @@ Lütfen yanıtı Türkçe dilinde, samimi, destekleyici, yol gösterici ve profe
               <p className="text-[11px] leading-relaxed mt-1 text-rose-500 font-semibold">{error}</p>
             </div>
           </div>
-          <div className="text-xs text-slate-800 leading-relaxed bg-white p-3 rounded-xl border border-rose-100/50">
-            <strong>Geliştirici Notu:</strong> AI Studio Secrets panelinden <code className="font-mono text-[10px] text-indigo-600 font-bold">GEMINI_API_KEY</code> değerini girmeniz gerekmektedir. Eğer key girmediyseniz sunucu yapay zeka isteğine yanıt veremeyecektir.
-          </div>
+
+          {localApiKey ? (
+            <div className="text-xs text-slate-800 leading-relaxed bg-white p-4 rounded-xl border border-rose-100 space-y-3">
+              <p className="font-semibold">
+                ⚠️ <strong>Cihaz API Anahtarı Modu Aktif:</strong> Tarayıcınızda kayıtlı bir API anahtarı olduğu için doğrudan cihazınızdan istek gönderiliyor. Ancak bu anahtarda kısıtlama/kota (high demand) veya geçersizlik sorunu var.
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Eğer AI Studio Secrets panelinden doğru bir anahtar girdiyseniz, aşağıdaki butona tıklayarak tarayıcınızdaki eski anahtarı silebilir ve otomatik olarak <strong>Sunucu Modu</strong>na geçebilirsiniz:
+              </p>
+              <button
+                onClick={() => {
+                  handleClearKey();
+                  setError('');
+                }}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-95 text-center block"
+              >
+                Cihaz Anahtarını Sil ve Sunucu Moduna (AI Studio) Geç
+              </button>
+            </div>
+          ) : (
+            <div className="text-xs text-slate-800 leading-relaxed bg-white p-3 rounded-xl border border-rose-100/50">
+              <strong>Geliştirici Notu:</strong> Sunucu modunda çalışırken AI Studio Secrets panelinden <code className="font-mono text-[10px] text-indigo-600 font-bold">GEMINI_API_KEY</code> değerini girmeniz gerekmektedir. Eğer key yeni girildiyse, sunucunun algılaması için lütfen sayfayı bir kez yenileyin.
+            </div>
+          )}
         </div>
       )}
 
