@@ -50,6 +50,13 @@ export interface SavingsGoal {
   yearlyCurrent: number;
 }
 
+export interface Income {
+  id: string;
+  description: string;
+  amount: number;
+  date: string; // ISO String or YYYY-MM-DD
+}
+
 export interface FinanceData {
   totalCashBudget: number; // Toplam nakit bütçem
   categories: Category[];
@@ -58,6 +65,7 @@ export interface FinanceData {
   overdraftAccounts: OverdraftAccount[];
   expenses: Expense[];
   savingsGoal: SavingsGoal;
+  incomes?: Income[]; // Optional for backwards compatibility, we will make it non-optional or default in state
 }
 
 // Varsayılan / Başlangıç Verileri (Default Mock Data to start with)
@@ -93,5 +101,9 @@ export const INITIAL_FINANCE_DATA: FinanceData = {
     monthlyCurrent: 8500,
     yearlyTarget: 600000,
     yearlyCurrent: 145000
-  }
+  },
+  incomes: [
+    { id: 'inc-1', description: 'Maaş', amount: 45000, date: '2026-06-01' },
+    { id: 'inc-2', description: 'Ek Gelir (Dış Ticaret)', amount: 8500, date: '2026-06-15' }
+  ]
 };

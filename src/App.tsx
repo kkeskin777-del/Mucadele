@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FinanceData, Expense, Category, CreditCard, Loan, OverdraftAccount, SavingsGoal, INITIAL_FINANCE_DATA } from './types';
+import { FinanceData, Expense, Category, CreditCard, Loan, OverdraftAccount, SavingsGoal, Income, INITIAL_FINANCE_DATA } from './types';
 import IOSFrame from './components/IOSFrame';
 import DashboardTab from './components/DashboardTab';
 import ExpensesTab from './components/ExpensesTab';
@@ -25,7 +25,11 @@ export default function App() {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (!parsed.incomes) {
+          parsed.incomes = INITIAL_FINANCE_DATA.incomes || [];
+        }
+        return parsed;
       } catch (e) {
         console.error('Failed to parse saved finance data, loading defaults', e);
       }
@@ -223,6 +227,90 @@ export default function App() {
     }));
   };
 
+  // 8. GELİRLER YÖNETİMİ (Income Management)
+  const handleAddIncome = (newInc: Omit<Income, 'id'>) => {
+    const incomeId = `inc-${Date.now()}`;
+    const income: Income = { ...newInc, id: incomeId };
+    setData((prev) => {
+      const currentIncomes = prev.incomes || [];
+      return {
+        ...prev,
+        totalCashBudget: prev.totalCashBudget + income.amount,
+        incomes: [income, ...currentIncomes]
+      };
+    });
+  };
+
+  const handleDeleteIncome = (incomeId: string) => {
+    setData((prev) => {
+      const currentIncomes = prev.incomes || [];
+      const income = currentIncomes.find((i) => i.id === incomeId);
+      if (!income) return prev;
+      return {
+        ...prev,
+        totalCashBudget: Math.max(0, prev.totalCashBudget - income.amount),
+        incomes: currentIncomes.filter((i) => i.id !== incomeId)
+      };
+    });
+  };
+
+  // 9. ÖDEME YAPMA SİSTEMİ (Payment Management)
+  const handleMakePayment = (
+    type: 'credit_card' | 'loan' | 'overdraft',
+    id: string,
+    amount: number
+  ) => {
+    setData((prev) => {
+      // 1. Decrease total cash budget
+      const updatedCashBudget = Math.max(0, prev.totalCashBudget - amount);
+
+      // 2. Decrease debt/balance based on type
+      let updatedCards = prev.creditCards;
+      let updatedLoans = prev.loans;
+      let updatedOverdrafts = prev.overdraftAccounts;
+
+      if (type === 'credit_card') {
+        updatedCards = prev.creditCards.map((cc) => {
+          if (cc.id === id) {
+            return { ...cc, debt: Math.max(0, cc.debt - amount) };
+          }
+          return cc;
+        });
+      } else if (type === 'overdraft') {
+        updatedOverdrafts = prev.overdraftAccounts.map((od) => {
+          if (od.id === id) {
+            return { ...od, debt: Math.max(0, od.debt - amount) };
+          }
+          return od;
+        });
+      } else if (type === 'loan') {
+        updatedLoans = prev.loans.map((loan) => {
+          if (loan.id === id) {
+            const currentTotal = loan.totalAmount ?? 0;
+            const newTotal = currentTotal > 0 ? Math.max(0, currentTotal - amount) : undefined;
+            const currentRem = loan.remainingInstallments ?? 0;
+            // If remaining installments exist and they are > 0, decrement by 1
+            const newRem = currentRem > 0 ? Math.max(0, currentRem - 1) : loan.remainingInstallments;
+            return {
+              ...loan,
+              totalAmount: newTotal,
+              remainingInstallments: newRem
+            };
+          }
+          return loan;
+        });
+      }
+
+      return {
+        ...prev,
+        totalCashBudget: updatedCashBudget,
+        creditCards: updatedCards,
+        loans: updatedLoans,
+        overdraftAccounts: updatedOverdrafts
+      };
+    });
+  };
+
   // Data import/sync & resets
   const handleImportData = (newData: FinanceData) => {
     setData(newData);
@@ -238,7 +326,7 @@ export default function App() {
   // List of active tabs configurations
   const tabs = [
     { id: 'dashboard', label: 'Ana Ekran', icon: <Home className="w-5 h-5" /> },
-    { id: 'expenses', label: 'Harcama', icon: <ShoppingCart className="w-5 h-5" /> },
+    { id: 'expenses', label: 'Gelir & Harcama', icon: <ShoppingCart className="w-5 h-5" /> },
     { id: 'cards', label: 'Kartlarım', icon: <CardIcon className="w-5 h-5" /> },
     { id: 'debts', label: 'Borçlar', icon: <DollarSign className="w-5 h-5" /> },
     { id: 'savings', label: 'Birikim', icon: <PiggyBank className="w-5 h-5" /> },
@@ -263,6 +351,8 @@ export default function App() {
           onDeleteExpense={handleDeleteExpense}
           onAddCategory={handleAddCategory}
           onDeleteCategory={handleDeleteCategory}
+          onAddIncome={handleAddIncome}
+          onDeleteIncome={handleDeleteIncome}
         />
       )}
 
@@ -272,6 +362,7 @@ export default function App() {
           onAddCard={handleAddCard}
           onDeleteCard={handleDeleteCard}
           onUpdateCardDebt={handleUpdateCardDebt}
+          onMakePayment={handleMakePayment}
         />
       )}
 
@@ -283,6 +374,7 @@ export default function App() {
           onAddOverdraft={handleAddOverdraft}
           onDeleteOverdraft={handleDeleteOverdraft}
           onUpdateOverdraftDebt={handleUpdateOverdraftDebt}
+          onMakePayment={handleMakePayment}
         />
       )}
 

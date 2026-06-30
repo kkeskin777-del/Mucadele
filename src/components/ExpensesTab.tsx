@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { FinanceData, Expense, Category, PaymentMethod } from '../types';
+import { FinanceData, Expense, Category, PaymentMethod, Income } from '../types';
 import * as Icons from 'lucide-react';
-import { Plus, Trash2, Calendar, CreditCard, Wallet, PlusCircle } from 'lucide-react';
+import { Plus, Trash2, Calendar, CreditCard, Wallet, PlusCircle, ArrowUpRight, ArrowDownRight, Sparkles } from 'lucide-react';
 
 interface ExpensesTabProps {
   data: FinanceData;
@@ -9,6 +9,8 @@ interface ExpensesTabProps {
   onDeleteExpense: (expenseId: string) => void;
   onAddCategory: (category: Omit<Category, 'id'>) => void;
   onDeleteCategory: (categoryId: string) => void;
+  onAddIncome: (income: Omit<Income, 'id'>) => void;
+  onDeleteIncome: (incomeId: string) => void;
 }
 
 const AVAILABLE_ICONS = [
@@ -22,8 +24,17 @@ const AVAILABLE_COLORS = [
   'bg-pink-500', 'bg-red-500', 'bg-indigo-500', 'bg-orange-500', 'bg-teal-500'
 ];
 
-export default function ExpensesTab({ data, onAddExpense, onDeleteExpense, onAddCategory, onDeleteCategory }: ExpensesTabProps) {
+export default function ExpensesTab({ 
+  data, 
+  onAddExpense, 
+  onDeleteExpense, 
+  onAddCategory, 
+  onDeleteCategory,
+  onAddIncome,
+  onDeleteIncome
+}: ExpensesTabProps) {
   const { categories, creditCards, expenses } = data;
+  const incomes = data.incomes || [];
 
   // New Expense Form State
   const [description, setDescription] = useState('');
@@ -33,13 +44,18 @@ export default function ExpensesTab({ data, onAddExpense, onDeleteExpense, onAdd
   const [creditCardId, setCreditCardId] = useState(creditCards[0]?.id || '');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // New Income Form State
+  const [incAmount, setIncAmount] = useState('');
+  const [incDesc, setIncDesc] = useState('');
+  const [incDate, setIncDate] = useState(new Date().toISOString().split('T')[0]);
+
   // New Category Form State
   const [newCatName, setNewCatName] = useState('');
   const [newCatIcon, setNewCatIcon] = useState(AVAILABLE_ICONS[0]);
   const [newCatColor, setNewCatColor] = useState(AVAILABLE_COLORS[0]);
 
-  // Sub-tab toggles: "Harcama Ekle" vs "Kategorileri Yönet"
-  const [subTab, setSubTab] = useState<'add_expense' | 'categories'>('add_expense');
+  // Sub-tab toggles: "add_expense" vs "income" vs "categories"
+  const [subTab, setSubTab] = useState<'add_expense' | 'income' | 'categories'>('add_expense');
 
   const handleAddExpenseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +76,24 @@ export default function ExpensesTab({ data, onAddExpense, onDeleteExpense, onAdd
     // Reset Form
     setDescription('');
     setAmount('');
+  };
+
+  const handleAddIncomeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!incDesc.trim() || !incAmount.trim()) return;
+
+    const incomeAmount = parseFloat(incAmount);
+    if (isNaN(incomeAmount) || incomeAmount <= 0) return;
+
+    onAddIncome({
+      description: incDesc.trim(),
+      amount: incomeAmount,
+      date: incDate
+    });
+
+    // Reset Form
+    setIncDesc('');
+    setIncAmount('');
   };
 
   const handleAddCategorySubmit = (e: React.FormEvent) => {
@@ -85,13 +119,14 @@ export default function ExpensesTab({ data, onAddExpense, onDeleteExpense, onAdd
       </div>
     );
   };
+
   return (
     <div className="p-6 space-y-6">
       
       {/* View Header */}
       <div>
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Harcamalar ve Kategoriler</h2>
-        <p className="text-xs text-slate-500 font-semibold">Harcamalarınızı girin ve bütçe kategorilerinizi özelleştirin</p>
+        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Gelir & Harcama Defteri</h2>
+        <p className="text-xs text-slate-500 font-semibold">Bütçenizi gelir ve harcamalar ile dengede tutun, kategorileri yönetin</p>
       </div>
 
       {/* Sub-Tabs Selector */}
@@ -103,7 +138,16 @@ export default function ExpensesTab({ data, onAddExpense, onDeleteExpense, onAdd
             subTab === 'add_expense' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          Harcama Girişi
+          Harcamalar
+        </button>
+        <button
+          id="subtab-income-btn"
+          onClick={() => setSubTab('income')}
+          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+            subTab === 'income' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Gelirler
         </button>
         <button
           id="subtab-category-btn"
@@ -112,7 +156,7 @@ export default function ExpensesTab({ data, onAddExpense, onDeleteExpense, onAdd
             subTab === 'categories' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          Kategori Yönetimi
+          Kategoriler
         </button>
       </div>
 
@@ -330,6 +374,115 @@ export default function ExpensesTab({ data, onAddExpense, onDeleteExpense, onAdd
                       </div>
                     );
                   })}
+              </div>
+            )}
+          </div>
+
+        </div>
+      ) : subTab === 'income' ? (
+        <div className="space-y-6">
+          
+          {/* New Income Form */}
+          <form id="form-add-income" onSubmit={handleAddIncomeSubmit} className="bg-white border-2 border-indigo-100 p-5 rounded-3xl space-y-4 shadow-sm animate-slideDown">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">Yeni Gelir Ekle</h3>
+            
+            <div className="space-y-3.5">
+              {/* Tutar */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Gelir Tutarı (TL)</label>
+                <input
+                  id="inp-inc-amount"
+                  type="number"
+                  step="any"
+                  value={incAmount}
+                  onChange={(e) => setIncAmount(e.target.value)}
+                  placeholder="0.00"
+                  required
+                  className="w-full bg-slate-50 border-2 border-slate-100 focus:border-indigo-500 rounded-xl py-3 px-4 text-base font-black text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/10"
+                />
+              </div>
+
+              {/* Açıklama */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Gelir Kaynağı / Açıklama</label>
+                <input
+                  id="inp-inc-desc"
+                  type="text"
+                  value={incDesc}
+                  onChange={(e) => setIncDesc(e.target.value)}
+                  placeholder="Örn: Maaş, Kira Geliri, Serbest Çalışma"
+                  required
+                  className="w-full bg-slate-50 border-2 border-slate-100 focus:border-indigo-500 rounded-xl py-3 px-4 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/10"
+                />
+              </div>
+
+              {/* Tarih */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Gelir Tarihi</label>
+                <input
+                  id="inp-inc-date"
+                  type="date"
+                  value={incDate}
+                  onChange={(e) => setIncDate(e.target.value)}
+                  required
+                  className="w-full bg-slate-50 border-2 border-slate-100 focus:border-indigo-500 rounded-xl py-3 px-4 text-xs font-bold text-slate-800 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <button
+              id="btn-add-income-submit"
+              type="submit"
+              className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs tracking-wider uppercase rounded-xl transition-all cursor-pointer mt-4 shadow-md shadow-emerald-100"
+            >
+              Geliri Kaydet
+            </button>
+          </form>
+
+          {/* Income History List */}
+          <div className="space-y-3">
+            <h3 className="font-black text-xs text-slate-400 uppercase tracking-wider">Gelir Defteri</h3>
+            
+            {incomes.length === 0 ? (
+              <div className="text-center p-8 bg-white border-2 border-dashed border-slate-200 rounded-2xl text-xs text-slate-400 shadow-sm">
+                Henüz kayıtlı gelir yok. Yukarıdaki formdan ekleyebilirsiniz.
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {[...incomes]
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .map((inc) => (
+                    <div 
+                      key={inc.id} 
+                      className="flex items-center justify-between p-4 bg-white rounded-2xl border-2 border-slate-100 shadow-sm hover:border-indigo-100 transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
+                          <ArrowUpRight className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-xs text-slate-800 block">{inc.description}</span>
+                          <span className="text-[10px] text-slate-400 font-semibold">
+                            Gelir Kaynağı • {inc.date}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="font-black text-xs text-emerald-500">
+                          +{inc.amount.toLocaleString('tr-TR')} TL
+                        </span>
+                        <button
+                          id={`btn-del-inc-${inc.id}`}
+                          onClick={() => onDeleteIncome(inc.id)}
+                          className="p-1.5 bg-rose-50 hover:bg-rose-100 rounded-lg text-rose-500 active:scale-90 transition-all cursor-pointer"
+                          title="Geliri sil (Bakiyeden düşer)"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
               </div>
             )}
           </div>

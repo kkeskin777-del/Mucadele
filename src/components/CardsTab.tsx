@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { FinanceData, CreditCard } from '../types';
-import { CreditCard as CardIcon, Plus, Trash2, Calendar, AlertCircle } from 'lucide-react';
+import { CreditCard as CardIcon, Plus, Trash2, Calendar, AlertCircle, Sparkles } from 'lucide-react';
 
 interface CardsTabProps {
   data: FinanceData;
   onAddCard: (card: Omit<CreditCard, 'id'>) => void;
   onDeleteCard: (cardId: string) => void;
   onUpdateCardDebt: (cardId: string, newDebt: number) => void;
+  onMakePayment: (type: 'credit_card' | 'loan' | 'overdraft', id: string, amount: number) => void;
 }
 
-export default function CardsTab({ data, onAddCard, onDeleteCard, onUpdateCardDebt }: CardsTabProps) {
+export default function CardsTab({ data, onAddCard, onDeleteCard, onUpdateCardDebt, onMakePayment }: CardsTabProps) {
   const { creditCards } = data;
 
   // New Card Form State
@@ -25,6 +26,10 @@ export default function CardsTab({ data, onAddCard, onDeleteCard, onUpdateCardDe
   // Manual Debt Edit State
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [editingDebt, setEditingDebt] = useState('');
+
+  // Payment Form State
+  const [payingCardId, setPayingCardId] = useState<string | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
 
   const handleAddCardSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +70,7 @@ export default function CardsTab({ data, onAddCard, onDeleteCard, onUpdateCardDe
   const handleStartEditDebt = (card: CreditCard) => {
     setEditingCardId(card.id);
     setEditingDebt(card.debt.toString());
+    setPayingCardId(null);
   };
 
   const handleSaveDebtEdit = (cardId: string) => {
@@ -72,6 +78,26 @@ export default function CardsTab({ data, onAddCard, onDeleteCard, onUpdateCardDe
     if (isNaN(parsed) || parsed < 0) return;
     onUpdateCardDebt(cardId, parsed);
     setEditingCardId(null);
+  };
+
+  const handleConfirmPayment = (cardId: string) => {
+    const parsed = parseFloat(paymentAmount);
+    if (isNaN(parsed) || parsed <= 0) {
+      alert('Lütfen geçerli bir ödeme miktarı girin.');
+      return;
+    }
+    const card = creditCards.find(c => c.id === cardId);
+    if (!card) return;
+    
+    if (parsed > data.totalCashBudget) {
+      if (!confirm(`Ödeme miktarı (${parsed.toLocaleString('tr-TR')} TL) nakit bütçenizi (${data.totalCashBudget.toLocaleString('tr-TR')} TL) aşmaktadır. Yine de devam etmek istiyor musunuz?`)) {
+        return;
+      }
+    }
+
+    onMakePayment('credit_card', cardId, parsed);
+    setPayingCardId(null);
+    setPaymentAmount('');
   };
 
   return (
@@ -210,12 +236,12 @@ export default function CardsTab({ data, onAddCard, onDeleteCard, onUpdateCardDe
                 className="bg-white rounded-3xl border-2 border-slate-100 p-5 space-y-4 relative overflow-hidden shadow-sm hover:border-indigo-100 transition-all text-slate-800"
               >
                 {/* Background decorative card icon */}
-                <div className="absolute right-[-15px] top-[-10px] opacity-5">
+                <div className="absolute right-[-15px] top-[-10px] opacity-5 pointer-events-none select-none">
                   <CardIcon className="w-28 h-28 text-slate-400" />
                 </div>
 
                 {/* Card Title & Info */}
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start relative z-10">
                   <div className="flex gap-3 items-center">
                     <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100">
                       <CardIcon className="w-5 h-5" />
@@ -257,18 +283,57 @@ export default function CardsTab({ data, onAddCard, onDeleteCard, onUpdateCardDe
                           Kaydet
                         </button>
                       </div>
+                    ) : payingCardId === cc.id ? (
+                      <div className="flex items-center gap-1.5 mt-1.5 animate-slideDown">
+                        <input
+                          id={`inp-pay-amount-${cc.id}`}
+                          type="number"
+                          placeholder="Miktar"
+                          value={paymentAmount}
+                          onChange={(e) => setPaymentAmount(e.target.value)}
+                          className="w-20 bg-white border-2 border-rose-200 text-xs font-bold text-slate-800 py-1 px-1.5 rounded-lg focus:outline-none focus:border-rose-500"
+                        />
+                        <button
+                          id={`btn-confirm-pay-${cc.id}`}
+                          onClick={() => handleConfirmPayment(cc.id)}
+                          className="bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold py-1 px-2.5 rounded-lg cursor-pointer transition-all active:scale-95"
+                        >
+                          Öde
+                        </button>
+                        <button
+                          onClick={() => setPayingCardId(null)}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-500 text-[10px] font-bold py-1 px-2 rounded-lg cursor-pointer"
+                        >
+                          İptal
+                        </button>
+                      </div>
                     ) : (
-                      <div className="flex items-baseline gap-1.5 mt-1">
+                      <div className="flex flex-col gap-1.5 mt-1">
                         <span className="text-xl font-black text-rose-500">
                           {cc.debt.toLocaleString('tr-TR')} TL
                         </span>
-                        <button
-                          id={`btn-edit-debt-${cc.id}`}
-                          onClick={() => handleStartEditDebt(cc)}
-                          className="text-[9px] text-indigo-600 font-bold hover:text-indigo-700 hover:underline cursor-pointer"
-                        >
-                          Borcu Düzelt
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            id={`btn-edit-debt-${cc.id}`}
+                            onClick={() => handleStartEditDebt(cc)}
+                            className="text-[9px] text-indigo-600 font-bold hover:text-indigo-700 hover:underline cursor-pointer"
+                          >
+                            Borcu Düzelt
+                          </button>
+                          {cc.debt > 0 && (
+                            <button
+                              id={`btn-pay-debt-trigger-${cc.id}`}
+                              onClick={() => {
+                                setPayingCardId(cc.id);
+                                setEditingCardId(null);
+                                setPaymentAmount('');
+                              }}
+                              className="px-2 py-0.5 bg-rose-500 hover:bg-rose-600 text-white text-[9px] font-bold rounded-lg cursor-pointer transition-all active:scale-95 flex items-center gap-0.5"
+                            >
+                              <Sparkles className="w-2.5 h-2.5" /> Ödeme Yap
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

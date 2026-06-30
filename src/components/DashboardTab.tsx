@@ -11,6 +11,7 @@ interface DashboardTabProps {
 
 export default function DashboardTab({ data, onNavigateToTab, quickAiTips }: DashboardTabProps) {
   const { totalCashBudget, creditCards, loans, overdraftAccounts, expenses, savingsGoal } = data;
+  const incomes = data.incomes || [];
 
   // Calculate totals
   const totalCcDebt = creditCards.reduce((acc, cc) => acc + cc.debt, 0);
@@ -18,6 +19,9 @@ export default function DashboardTab({ data, onNavigateToTab, quickAiTips }: Das
   const totalLoanInstallments = loans.reduce((acc, loan) => acc + loan.installment, 0);
   const totalOverdraftDebt = overdraftAccounts.reduce((acc, od) => acc + od.debt, 0);
   const totalOverdraftLimit = overdraftAccounts.reduce((acc, od) => acc + od.limit, 0);
+
+  const totalIncome = incomes.reduce((acc, inc) => acc + inc.amount, 0);
+  const totalExpenses = expenses.reduce((acc, exp) => acc + exp.amount, 0);
 
   // Recent expenses (last 4)
   const recentExpenses = [...expenses]
@@ -53,9 +57,12 @@ export default function DashboardTab({ data, onNavigateToTab, quickAiTips }: Das
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">CepteFinans</h1>
           <p className="text-xs text-slate-500 font-semibold">Yapay Zeka Destekli Finansal Yol Arkadaşın</p>
         </div>
-        <div className="p-2.5 bg-indigo-50 rounded-2xl border-2 border-indigo-100 shadow-sm">
+        <button 
+          onClick={() => onNavigateToTab('settings')}
+          className="p-2.5 bg-indigo-50 rounded-2xl border-2 border-indigo-100 shadow-sm cursor-pointer hover:bg-indigo-100 transition-colors"
+        >
           <Icons.User className="w-5 h-5 text-indigo-600" />
-        </div>
+        </button>
       </div>
 
       {/* Main Card: Net Cash Budget */}
@@ -67,12 +74,24 @@ export default function DashboardTab({ data, onNavigateToTab, quickAiTips }: Das
         <div className="absolute right-[-10px] bottom-[-20px] opacity-5">
           <Icons.Wallet className="w-48 h-48 text-indigo-600" />
         </div>
-        <span className="text-[11px] font-black tracking-wider uppercase text-slate-400 block">AYLIK TOPLAM NAKIT BÜTÇEM</span>
+        <span className="text-[11px] font-black tracking-wider uppercase text-slate-400 block">KULLANILABİLİR NET NAKİTİM</span>
         <h2 className="text-4xl font-black mt-1 text-indigo-600 tracking-tight">
           {totalCashBudget.toLocaleString('tr-TR')} <span className="text-xl font-bold opacity-60">TL</span>
         </h2>
+
+        {/* Income / Expense Flow Summary */}
+        <div className="flex gap-4 mt-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-100/50">
+          <div className="flex items-center gap-1">
+            <Icons.ArrowUpRight className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <span className="text-[10px] font-bold text-slate-400 uppercase">GELİR: <strong className="text-emerald-500 font-black">{totalIncome.toLocaleString('tr-TR')} TL</strong></span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Icons.ArrowDownRight className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+            <span className="text-[10px] font-bold text-slate-400 uppercase">GİDER: <strong className="text-rose-500 font-black">{totalExpenses.toLocaleString('tr-TR')} TL</strong></span>
+          </div>
+        </div>
         
-        <div className="grid grid-cols-2 gap-4 mt-6 pt-5 border-t-2 border-slate-50">
+        <div className="grid grid-cols-2 gap-4 mt-5 pt-4 border-t-2 border-slate-50">
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kart Borcu Toplamı</span>
             <span className="text-base font-black tracking-tight text-rose-500">

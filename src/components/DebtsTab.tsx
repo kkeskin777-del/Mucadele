@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FinanceData, Loan, OverdraftAccount } from '../types';
-import { TrendingDown, Percent, Plus, Trash2, Calendar, Landmark, AlertCircle } from 'lucide-react';
+import { TrendingDown, Percent, Plus, Trash2, Calendar, Landmark, AlertCircle, Sparkles } from 'lucide-react';
 
 interface DebtsTabProps {
   data: FinanceData;
@@ -9,6 +9,7 @@ interface DebtsTabProps {
   onAddOverdraft: (overdraft: Omit<OverdraftAccount, 'id'>) => void;
   onDeleteOverdraft: (overdraftId: string) => void;
   onUpdateOverdraftDebt: (overdraftId: string, newDebt: number) => void;
+  onMakePayment: (type: 'credit_card' | 'loan' | 'overdraft', id: string, amount: number) => void;
 }
 
 export default function DebtsTab({
@@ -17,7 +18,8 @@ export default function DebtsTab({
   onDeleteLoan,
   onAddOverdraft,
   onDeleteOverdraft,
-  onUpdateOverdraftDebt
+  onUpdateOverdraftDebt,
+  onMakePayment
 }: DebtsTabProps) {
   const { loans, overdraftAccounts } = data;
 
@@ -44,6 +46,13 @@ export default function DebtsTab({
   // Manual Overdraft debt edit
   const [editingOdId, setEditingOdId] = useState<string | null>(null);
   const [editingOdDebt, setEditingOdDebt] = useState('');
+
+  // Payment Form States
+  const [payingLoanId, setPayingLoanId] = useState<string | null>(null);
+  const [loanPayAmount, setLoanPayAmount] = useState('');
+
+  const [payingOdId, setPayingOdId] = useState<string | null>(null);
+  const [odPayAmount, setOdPayAmount] = useState('');
 
   const handleAddLoanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +115,7 @@ export default function DebtsTab({
   const handleStartEditOdDebt = (od: OverdraftAccount) => {
     setEditingOdId(od.id);
     setEditingOdDebt(od.debt.toString());
+    setPayingOdId(null);
   };
 
   const handleSaveOdDebtEdit = (odId: string) => {
@@ -113,6 +123,42 @@ export default function DebtsTab({
     if (isNaN(parsed) || parsed < 0) return;
     onUpdateOverdraftDebt(odId, parsed);
     setEditingOdId(null);
+  };
+
+  const handleConfirmLoanPayment = (loanId: string, defaultAmount: number) => {
+    const parsed = parseFloat(loanPayAmount || defaultAmount.toString());
+    if (isNaN(parsed) || parsed <= 0) {
+      alert('Lütfen geçerli bir ödeme miktarı girin.');
+      return;
+    }
+
+    if (parsed > data.totalCashBudget) {
+      if (!confirm(`Ödeme miktarı (${parsed.toLocaleString('tr-TR')} TL) nakit bütçenizi (${data.totalCashBudget.toLocaleString('tr-TR')} TL) aşmaktadır. Yine de devam etmek istiyor musunuz?`)) {
+        return;
+      }
+    }
+
+    onMakePayment('loan', loanId, parsed);
+    setPayingLoanId(null);
+    setLoanPayAmount('');
+  };
+
+  const handleConfirmOdPayment = (odId: string) => {
+    const parsed = parseFloat(odPayAmount);
+    if (isNaN(parsed) || parsed <= 0) {
+      alert('Lütfen geçerli bir ödeme miktarı girin.');
+      return;
+    }
+
+    if (parsed > data.totalCashBudget) {
+      if (!confirm(`Ödeme miktarı (${parsed.toLocaleString('tr-TR')} TL) nakit bütçenizi (${data.totalCashBudget.toLocaleString('tr-TR')} TL) aşmaktadır. Yine de devam etmek istiyor musunuz?`)) {
+        return;
+      }
+    }
+
+    onMakePayment('overdraft', odId, parsed);
+    setPayingOdId(null);
+    setOdPayAmount('');
   };
 
   return (
@@ -304,6 +350,49 @@ export default function DebtsTab({
                       </div>
                     )}
                   </div>
+
+                  {payingLoanId === loan.id ? (
+                    <div className="flex items-center justify-between bg-rose-50/50 p-3 rounded-2xl border-2 border-rose-100/60 mt-2 animate-slideDown">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-bold text-rose-800 uppercase">Ödeme:</span>
+                        <input
+                          id={`inp-pay-loan-${loan.id}`}
+                          type="number"
+                          placeholder={loan.installment.toString()}
+                          value={loanPayAmount}
+                          onChange={(e) => setLoanPayAmount(e.target.value)}
+                          className="w-24 bg-white border-2 border-rose-200 text-xs font-bold text-slate-800 py-1 px-1.5 rounded-lg focus:outline-none focus:border-rose-500"
+                        />
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleConfirmLoanPayment(loan.id, loan.installment)}
+                          className="bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold py-1 px-2.5 rounded-lg cursor-pointer"
+                        >
+                          Öde
+                        </button>
+                        <button
+                          onClick={() => setPayingLoanId(null)}
+                          className="bg-slate-100 text-slate-500 text-[10px] font-bold py-1 px-2 rounded-lg cursor-pointer"
+                        >
+                          İptal
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-end pt-1">
+                      <button
+                        onClick={() => {
+                          setPayingLoanId(loan.id);
+                          setPayingOdId(null);
+                          setLoanPayAmount(loan.installment.toString());
+                        }}
+                        className="px-3 py-1 bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-black rounded-lg cursor-pointer transition-all active:scale-95 flex items-center gap-1 shadow-sm"
+                      >
+                        <Sparkles className="w-2.5 h-2.5" /> Taksit Öde
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -465,18 +554,58 @@ export default function DebtsTab({
                               Kaydet
                             </button>
                           </div>
+                        ) : payingOdId === od.id ? (
+                          <div className="flex items-center gap-1.5 mt-1.5 animate-slideDown">
+                            <input
+                              id={`inp-pay-od-${od.id}`}
+                              type="number"
+                              placeholder="Miktar"
+                              value={odPayAmount}
+                              onChange={(e) => setOdPayAmount(e.target.value)}
+                              className="w-20 bg-white border-2 border-rose-200 text-xs font-bold text-slate-800 py-1 px-1.5 rounded-lg focus:outline-none focus:border-rose-500"
+                            />
+                            <button
+                              id={`btn-confirm-od-pay-${od.id}`}
+                              onClick={() => handleConfirmOdPayment(od.id)}
+                              className="bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold py-1 px-2.5 rounded-lg cursor-pointer transition-all active:scale-95"
+                            >
+                              Öde
+                            </button>
+                            <button
+                              onClick={() => setPayingOdId(null)}
+                              className="bg-slate-100 hover:bg-slate-200 text-slate-500 text-[10px] font-bold py-1 px-2 rounded-lg cursor-pointer"
+                            >
+                              İptal
+                            </button>
+                          </div>
                         ) : (
-                          <div className="flex items-baseline gap-1.5 mt-1">
+                          <div className="flex flex-col gap-1.5 mt-1">
                             <span className="text-xl font-black text-rose-500">
                               {od.debt.toLocaleString('tr-TR')} TL
                             </span>
-                            <button
-                              id={`btn-edit-od-debt-${od.id}`}
-                              onClick={() => handleStartEditOdDebt(od)}
-                              className="text-[9px] text-indigo-600 font-bold hover:text-indigo-700 hover:underline cursor-pointer"
-                            >
-                              Düzelt
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                id={`btn-edit-od-debt-${od.id}`}
+                                onClick={() => handleStartEditOdDebt(od)}
+                                className="text-[9px] text-indigo-600 font-bold hover:text-indigo-700 hover:underline cursor-pointer"
+                              >
+                                Düzelt
+                              </button>
+                              {od.debt > 0 && (
+                                <button
+                                  id={`btn-pay-od-trigger-${od.id}`}
+                                  onClick={() => {
+                                    setPayingOdId(od.id);
+                                    setPayingLoanId(null);
+                                    setEditingOdId(null);
+                                    setOdPayAmount('');
+                                  }}
+                                  className="px-2 py-0.5 bg-rose-500 hover:bg-rose-600 text-white text-[9px] font-bold rounded-lg cursor-pointer transition-all active:scale-95 flex items-center gap-0.5"
+                                >
+                                  <Sparkles className="w-2.5 h-2.5" /> Ödeme Yap
+                                </button>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
