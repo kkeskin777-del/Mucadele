@@ -1,0 +1,8 @@
+{
+  "name": "Kişisel Finans Asistanı",
+  "description": "Kişisel harcamalarınızı, kredi kartlarınızı, kredilerinizi ve eksi bakiyelerinizi yönetebileceğiniz, yapay zeka destekli finansal analiz ve bütçeleme uygulaması.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
